@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>家計簿×地図</title>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.3.1/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.3.1/mapbox-gl.css" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            position: absolute;
+            top: 10%;
+            bottom: 0;
+            width: 100%;
+        }
+
+        .marker {
+            background-color: #52d3aa;
+            border-radius: 50%;
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+
+
+
+
+    <div id="map"></div>
+
+    <input type="date" id="startDatePicker" onchange="updateMarkers()">
+    <input type="date" id="endDatePicker" onchange="updateMarkers()">
+    <span id="totalAmount">0円</span>
+
+    <div id="dataContainer">
+        <table id="dataTable">
+            <thead>
+                <tr>
+                    <th>日付</th>
+                    <th>説明</th>
+                    <th>金額</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+
+
+    <script>
+
+        // データの取得（サンプルデータを使用、実際のデータには外部からの取得方法を使用する）
+        var data = {{ data | tojson }};
+
+        mapboxgl.accessToken = '';
+
+        var map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/light-v10',
+            center: [140.84, 38.25],
+            zoom: 15
+        });
+
+        data.forEach(function (marker) {
+            var el = document.createElement('div');
+            el.className = 'marker';
+            el.style.backgroundSize = '100%';
+            el.style.width = Math.sqrt(marker.size) / 4 + 'px';
+            el.style.height = Math.sqrt(marker.size) / 4 + 'px';
+
+            var popup = new mapboxgl.Popup({ offset: 25 })
+                .setText(marker.description);
+
+            new mapboxgl.Marker(el)
+                .setLngLat([marker.lng, marker.lat])
+                .setPopup(popup) // ポップアップをマーカーに紐付け
+                .addTo(map);
+        });
+
+        map.addControl(new mapboxgl.NavigationControl());
+
+
+
+        /********************************************************/
+
+        // 初期値の設定
+        function setInitialDates() {
+            var today = new Date();
+            var lastWeek = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 30);
+
+            document.getElementById('startDatePicker').valueAsDate = lastWeek;
+            document.getElementById('endDatePicker').valueAsDate = today;
+
+            updateMarkers(); // 初期値でマーカーを更新
+        }
+
+        /********************************************************/
+
+        function calculateTotalAmount(startDate, endDate) {
+            var totalAmount = 0;
+
+            data.forEach(function(marker) {
+                var markerDate = new Date(marker.date);
+                if (markerDate >= new Date(startDate) && markerDate <= new Date(endDate)) {
+                totalAmount += marker.size;
+                }
+            });
+
+            document.getElementById('totalAmount').textContent = totalAmount + '円';
+            }
+
+        /********************************************************/
+
+        function updateMarkers() {
+            var selectedStartDate = document.getElementById('startDatePicker').value;
+            var selectedEndDate = document.getElementById('endDatePicker').value;
+
+            if (!selectedStartDate || !selectedEndDate) {
+                return; // 両方の日付が選択されていない場合は何もしない
+            }
+
+            showMarkersForPeriod(selectedStartDate, selectedEndDate);
+            updateTableForPeriod(selectedStartDate, selectedEndDate);
+            calculateTotalAmount(selectedStartDate, selectedEndDate);
+        }
+
+        function showMarkersForPeriod(startDate, endDate) {
+            // 既存のマーカーをクリア
+            document.querySelectorAll('.marker').forEach(function (marker) {
+                marker.remove();
+            });
+
+            // 指定された期間に該当するマーカーのみを表示
+            data.forEach(function (marker) {
+                var markerDate = new Date(marker.date);
+                if (markerDate >= new Date(startDate) && markerDate <= new Date(endDate)) {
+                    // マーカーの作成と地図への追加
+                    var el = document.createElement('div');
+                    el.className = 'marker';
+                    el.style.backgroundSize = '100%';
+                    el.style.width = Math.sqrt(marker.size) / 4 + 'px';
+                    el.style.height = Math.sqrt(marker.size) / 4 + 'px';
+
+                    var popup = new mapboxgl
+                        .Popup({ offset: 25 })
+                        .setText(marker.description);
+
+                    new mapboxgl
+                        .Marker(el)
+                        .setLngLat([marker.lng, marker.lat])
+                        .setPopup(popup)
+                        .addTo(map);
+                }
+            });
+        }
+
+        /********************************************************/
+
+        function updateTableForPeriod(startDate, endDate) {
+            var tbody = document.getElementById('dataTable').getElementsByTagName('tbody')[0];
+            tbody.innerHTML = '';
+
+            data.forEach(function (marker, index) {
+                var markerDate = new Date(marker.date);
+                if (markerDate >= new Date(startDate) && markerDate <= new Date(endDate)) {
+                    var row = tbody.insertRow();
+                    row.setAttribute('data-marker-index', index); // 行にマーカーのインデックスを追加
+                    row.onclick = function () { focusOnMarker(index); }; // クリックイベントを追加
+
+                    var cellDate = row.insertCell(0);
+                    var cellDescription = row.insertCell(1);
+                    var cellAmount = row.insertCell(2);
+
+                    cellDate.textContent = marker.year+"年"+marker.month+"月"+marker.day+"日";
+                    cellDescription.textContent = marker.shop;
+                    cellAmount.textContent = marker.size + '円';
+
+                }
+            });
+        }
+
+        function focusOnMarker(index) {
+            var markerData = data[index];
+            map.flyTo({
+                center: [markerData.lng, markerData.lat],
+                essential: true,
+                zoom: 15
+            });
+        }
+
+
+        /********************************************************/
+
+        window.onload = setInitialDates;
+
+
+
+
+
+    </script>
+</body>
+
+</html>
+
+
+<style>
+    body {
+        font-family: 'Arial', sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f4f4f4;
+        /* 背景色 */
+    }
+
+    #map {
+        position: absolute;
+        top: 60px;
+        /* 日付選択器の下に位置 */
+        bottom: 0;
+        width: 100%;
+    }
+
+    input[type="date"] {
+        font-family: 'Arial', sans-serif;
+        font-size: 16px;
+        padding: 10px;
+        margin: 10px;
+        border: none;
+        border-radius: 5px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        /* 影を付ける */
+        background-color: #fff;
+        cursor: pointer;
+        /* カーソルのスタイル */
+    }
+
+    input[type="date"]:hover {
+        background-color: #eaeaea;
+        /* ホバー時の背景色 */
+    }
+
+    .marker {
+        background-color: #52d3aa;
+        border-radius: 50%;
+        display: block;
+    }
+
+
+    #dataContainer {
+        position: absolute;
+        top: 60px;
+        /* 地図の下に配置 */
+        left: 10px;
+        max-width: 600px;
+        max-height: 80%;
+        /* 画面内に収まるように高さを制限 */
+        background-color: #fff;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        overflow-y: auto;
+        /* 必要に応じてスクロール */
+        border-radius: 5px;
+        padding: 10px;
+    }
+
+    #dataTable {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    #dataTable th,
+    #dataTable td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+    }
+
+    #dataTable th {
+        background-color: #52d3aa;
+        color: white;
+    }
+</style>
