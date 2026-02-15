@@ -1,37 +1,25 @@
 /**
- * 指定された店舗名に基づいて、その住所、緯度、経度を返す関数。
- * @param {string} facilityName - ジオコーディングする店舗の名前。
- * @return {Object|null} ジオコーディングの結果（住所、緯度、経度）を含むオブジェクト、または店舗が見つからない場合はnull。
+ * 店舗名(住所文字列)をジオコーディングして、住所と座標を返す。
+ * 目的: レシートから取得した店舗情報を地図・台帳に再利用できる形へ変換する。
  */
 function getGeocodeFacility(facilityName) {
-    // Google Maps APIのジオコーダーを初期化
-    var geocoder = Maps.newGeocoder();
-    geocoder.setLanguage('ja'); // 言語を日本語に設定
+  var geocoder = Maps.newGeocoder();
+  geocoder.setLanguage('ja');
+  var response = geocoder.geocode(facilityName);
 
-    // 指定された店舗名でジオコーディングを実行
-    var response = geocoder.geocode(facilityName);
+  if (response.results && response.results[0]) {
+    var location = response.results[0].geometry.location;
+    return {
+      address: response.results[0].formatted_address,
+      latitude: location.lat,
+      longitude: location.lng
+    };
+  }
 
-    // ジオコーディングの結果が存在するかチェック
-    if (response['results'][0] != null) {
-        // 緯度と経度を取得
-        var location = response['results'][0]['geometry']['location'];
-        // 住所を取得
-        var address = response['results'][0]['formatted_address'];
-
-        // 住所、緯度、経度を含むオブジェクトを返す
-        return {
-            "address": address,
-            "latitude": location['lat'],
-            "longitude": location['lng']
-        };
-    } else {
-        // 結果がない場合はnullを返す
-        return {
-            "address": "unknown",
-            "latitude": "unknown",
-            "longitude": "unknown"
-        };;
-    }
+  // 見つからないケースも戻り値の形を固定して扱いやすくする。
+  return {
+    address: "unknown",
+    latitude: "unknown",
+    longitude: "unknown"
+  };
 }
-
-/******************************************************/

@@ -1,16 +1,16 @@
-/******************************************************/
-// カレンダーのAPIキーを入れてください
-let CALENDAR_ID = ''
+// --- 外部サービスの接続情報 ---
+// 目的: 機密値をコード本体から分離し、設定箇所を明確にする。
 
-// LINEのAPIキーを入れてください
+// Google カレンダー ID
+let CALENDAR_ID = '';
+
+// LINE Messaging API チャネルアクセストークン
 const LINE_TOKEN = '';
 
-// MAPBOXのAPIキーを入れてください
+// Mapbox Access Token
 const MAPBOX_TOKEN = '';
 
-// スプレッドシート＆シートオブジェクトを取得
+// --- スプレッドシート参照 ---
 const ss = SpreadsheetApp.getActiveSpreadsheet();
 const Sheet = ss.getSheetByName('');
 const Debug = ss.getSheetByName('');
-
-/******************************************************/
