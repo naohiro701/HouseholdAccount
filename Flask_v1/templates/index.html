@@ -54,12 +54,11 @@
 
 
     <script>
-
-        // データの取得（サンプルデータを使用、実際のデータには外部からの取得方法を使用する）
+        // サーバーから受け取った支出データ。各要素は 1 件の支出レコード。
         var data = {{ data | tojson }};
-
         mapboxgl.accessToken = '';
 
+        // 地図を初期化する。
         var map = new mapboxgl.Map({
             container: 'map',
             style: 'mapbox://styles/mapbox/light-v10',
@@ -67,101 +66,78 @@
             zoom: 15
         });
 
-        data.forEach(function (marker) {
+        /**
+         * 金額に応じてサイズを変えたマーカーを 1 つ生成する。
+         */
+        function createMarker(marker) {
             var el = document.createElement('div');
             el.className = 'marker';
             el.style.backgroundSize = '100%';
             el.style.width = Math.sqrt(marker.size) / 4 + 'px';
             el.style.height = Math.sqrt(marker.size) / 4 + 'px';
 
-            var popup = new mapboxgl.Popup({ offset: 25 })
-                .setText(marker.description);
-
-            new mapboxgl.Marker(el)
-                .setLngLat([marker.lng, marker.lat])
-                .setPopup(popup) // ポップアップをマーカーに紐付け
-                .addTo(map);
-        });
-
-        map.addControl(new mapboxgl.NavigationControl());
-
-
-
-        /********************************************************/
-
-        // 初期値の設定
-        function setInitialDates() {
-            var today = new Date();
-            var lastWeek = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 30);
-
-            document.getElementById('startDatePicker').valueAsDate = lastWeek;
-            document.getElementById('endDatePicker').valueAsDate = today;
-
-            updateMarkers(); // 初期値でマーカーを更新
+            var popup = new mapboxgl.Popup({ offset: 25 }).setText(marker.description);
+            new mapboxgl.Marker(el).setLngLat([marker.lng, marker.lat]).setPopup(popup).addTo(map);
         }
 
-        /********************************************************/
+        // 初回表示時は全マーカーを描画する。
+        data.forEach(createMarker);
+        map.addControl(new mapboxgl.NavigationControl());
 
+        /**
+         * 期間フィルターの初期値を設定する (過去 30 日)。
+         */
+        function setInitialDates() {
+            var today = new Date();
+            var lastMonth = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 30);
+            document.getElementById('startDatePicker').valueAsDate = lastMonth;
+            document.getElementById('endDatePicker').valueAsDate = today;
+            updateMarkers();
+        }
+
+        /**
+         * 指定期間の支出合計を画面へ表示する。
+         */
         function calculateTotalAmount(startDate, endDate) {
             var totalAmount = 0;
-
-            data.forEach(function(marker) {
+            data.forEach(function (marker) {
                 var markerDate = new Date(marker.date);
                 if (markerDate >= new Date(startDate) && markerDate <= new Date(endDate)) {
-                totalAmount += marker.size;
+                    totalAmount += marker.size;
                 }
             });
-
             document.getElementById('totalAmount').textContent = totalAmount + '円';
-            }
+        }
 
-        /********************************************************/
-
+        /**
+         * 期間が更新されたときに地図・表・合計を同期更新する。
+         */
         function updateMarkers() {
             var selectedStartDate = document.getElementById('startDatePicker').value;
             var selectedEndDate = document.getElementById('endDatePicker').value;
-
-            if (!selectedStartDate || !selectedEndDate) {
-                return; // 両方の日付が選択されていない場合は何もしない
-            }
+            if (!selectedStartDate || !selectedEndDate) return;
 
             showMarkersForPeriod(selectedStartDate, selectedEndDate);
             updateTableForPeriod(selectedStartDate, selectedEndDate);
             calculateTotalAmount(selectedStartDate, selectedEndDate);
         }
 
+        /**
+         * 指定期間に該当するマーカーだけを再描画する。
+         */
         function showMarkersForPeriod(startDate, endDate) {
-            // 既存のマーカーをクリア
-            document.querySelectorAll('.marker').forEach(function (marker) {
-                marker.remove();
-            });
-
-            // 指定された期間に該当するマーカーのみを表示
+            document.querySelectorAll('.marker').forEach(function (marker) { marker.remove(); });
             data.forEach(function (marker) {
                 var markerDate = new Date(marker.date);
                 if (markerDate >= new Date(startDate) && markerDate <= new Date(endDate)) {
-                    // マーカーの作成と地図への追加
-                    var el = document.createElement('div');
-                    el.className = 'marker';
-                    el.style.backgroundSize = '100%';
-                    el.style.width = Math.sqrt(marker.size) / 4 + 'px';
-                    el.style.height = Math.sqrt(marker.size) / 4 + 'px';
-
-                    var popup = new mapboxgl
-                        .Popup({ offset: 25 })
-                        .setText(marker.description);
-
-                    new mapboxgl
-                        .Marker(el)
-                        .setLngLat([marker.lng, marker.lat])
-                        .setPopup(popup)
-                        .addTo(map);
+                    createMarker(marker);
                 }
             });
         }
 
-        /********************************************************/
-
+        /**
+         * 指定期間の支出をテーブルへ反映する。
+         */
         function updateTableForPeriod(startDate, endDate) {
             var tbody = document.getElementById('dataTable').getElementsByTagName('tbody')[0];
             tbody.innerHTML = '';
@@ -170,39 +146,25 @@
                 var markerDate = new Date(marker.date);
                 if (markerDate >= new Date(startDate) && markerDate <= new Date(endDate)) {
                     var row = tbody.insertRow();
-                    row.setAttribute('data-marker-index', index); // 行にマーカーのインデックスを追加
-                    row.onclick = function () { focusOnMarker(index); }; // クリックイベントを追加
+                    row.setAttribute('data-marker-index', index);
+                    row.onclick = function () { focusOnMarker(index); };
 
-                    var cellDate = row.insertCell(0);
-                    var cellDescription = row.insertCell(1);
-                    var cellAmount = row.insertCell(2);
-
-                    cellDate.textContent = marker.year+"年"+marker.month+"月"+marker.day+"日";
-                    cellDescription.textContent = marker.shop;
-                    cellAmount.textContent = marker.size + '円';
-
+                    row.insertCell(0).textContent = marker.year + '年' + marker.month + '月' + marker.day + '日';
+                    row.insertCell(1).textContent = marker.shop;
+                    row.insertCell(2).textContent = marker.size + '円';
                 }
             });
         }
 
+        /**
+         * テーブルで選択した支出の座標に地図を移動する。
+         */
         function focusOnMarker(index) {
             var markerData = data[index];
-            map.flyTo({
-                center: [markerData.lng, markerData.lat],
-                essential: true,
-                zoom: 15
-            });
+            map.flyTo({ center: [markerData.lng, markerData.lat], essential: true, zoom: 15 });
         }
 
-
-        /********************************************************/
-
         window.onload = setInitialDates;
-
-
-
-
-
     </script>
 </body>
 

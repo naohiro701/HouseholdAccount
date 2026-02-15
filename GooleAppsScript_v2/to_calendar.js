@@ -1,55 +1,26 @@
 /**
- * Registers an event in the specified Google Calendar with a given title, date, location, and description.
- *
- * @param {string} title - The title of the calendar event.
- * @param {string|Date} dateStr - The start date/time of the event. Accepts a date string or Date object.
- * @param {string} locationStr - The location of the event.
- * @param {string} descriptionStr - The description or memo for the event.
+ * Google カレンダーへ家計イベントを登録する。
+ * 目的: レシート登録と同時に「いつ・どこで支出したか」を時系列で見返せるようにする。
  */
 function registerCalendarEvent(title, dateStr, locationStr, descriptionStr) {
   try {
-    Logger.log("Start registerCalendarEvent");
+    var calendarId = '@group.calendar.google.com';
+    var calendar = CalendarApp.getCalendarById(calendarId);
+    if (!calendar) throw new Error("Calendar not found: " + calendarId);
 
-    const calendarId = '@group.calendar.google.com';
-    const calendar = CalendarApp.getCalendarById(calendarId);
+    // 文字列/Date どちらで渡されても Date に正規化する。
+    var startDate = (dateStr instanceof Date) ? dateStr : new Date(dateStr);
+    if (isNaN(startDate.getTime())) throw new Error("Invalid date format: " + dateStr);
 
-    if (!calendar) {
-      Logger.log("❌ Calendar not found: " + calendarId);
-      throw new Error("Calendar not found. Check calendar ID and permissions.");
-    }
+    // 支出記録イベントは短時間イベント(10分)として扱う。
+    var endDate = new Date(startDate.getTime() + 10 * 60 * 1000);
 
-    const startDate = (dateStr instanceof Date) ? dateStr : new Date(dateStr);
-    if (isNaN(startDate.getTime())) {
-      Logger.log("❌ Invalid date string: " + dateStr);
-      throw new Error("Invalid date format: " + dateStr);
-    }
-
-    Logger.log("✅ Parsed startDate: " + startDate);
-
-    const durationMs = 10 * 60 * 1000;
-    const endDate = new Date(startDate.getTime() + durationMs);
-
-    Logger.log("📅 Creating event: " + title);
-    Logger.log("Start: " + startDate + ", End: " + endDate);
-    Logger.log("Location: " + locationStr + ", Description: " + descriptionStr);
-
-    const eventOptions = {
+    calendar.createEvent(title, startDate, endDate, {
       description: descriptionStr,
       location: locationStr
-    };
-
-    calendar.createEvent(title, startDate, endDate, eventOptions);
-
-    Logger.log("✅ Event successfully created");
-
+    });
   } catch (e) {
-    Logger.log("🔥 Error: " + e.message);
-    throw e; // 再スローしてスクリプトエディタのエラー表示にも反映
+    Logger.log("registerCalendarEvent error: " + e.message);
+    throw e;
   }
 }
-
-
-// function test(){
-// // Usage example with valid ISO 8601 format: "YYYY-MM-DDTHH:MM:SS"
-// registerCalendarEvent("A", "2025-03-30:23:00", "Sendai", "memo");
-// }
