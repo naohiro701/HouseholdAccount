@@ -1,18 +1,73 @@
 # Household Account
 
-### About Me
-This code is the digital household account book that can be easily used.
-You can connect official line, Google spreadsheet and website by flask, python.
-Please add it to Google Apps Script and flask server.
+家計簿を「どこで使ったか（空間情報）」まで含めて記録・可視化するためのプロジェクトです。
+LINE・Google スプレッドシート・Google Apps Script・Flask を連携し、日々の支出を地理情報付きで蓄積できる構成になっています。
 
-Today, there is a trend toward spending money in local areas, amid talk of "local production for local consumption. In Japan, the Furusato tax is an example of this trend, and measures are being taken to encourage people in urban centers to spend their money on local products. However, it is unclear how much money people currently spend in rural areas. We do not even know "where" the money is being spent.
-Therefore, we will take a flexible approach to the household budget so that we can analyze how we spend our money based on "spatiality". We will be able to see what we bought, in which areas, and how much we spent, years or decades later.
-With IoT tools.
+---
 
+## このリポジトリで管理しているバージョン
 
-### Specification
-This is an example of official line communication.
+本リポジトリでは、Google Apps Script を中心に **v1** と **v2** を分けて保存しています。
+目的は、運用中の処理（v1）と拡張・再構成した処理（v2）を分離し、移行や比較をしやすくすることです。
+
+### v1（既存運用向けの構成）
+
+#### できること
+- LINE から送信された内容を受け取り、支出データとして扱う。
+- 受信したデータを Google スプレッドシートへ保存・整理する。
+- Flask 側の表示（地図可視化）と連携するためのデータ基盤を作る。
+- カテゴリ・タスク単位の基本処理を行う。
+
+#### ディレクトリ構造
+- `GooleAppsScript_v1/`
+  - `doPost.js`：LINE などからの POST リクエスト受付。
+  - `doGet.js`：GET リクエスト処理。
+  - `token.js`：認証トークンなどの管理補助。
+  - `logistics.js`：データの受け渡し・補助処理。
+  - `category.js`：カテゴリ関連処理。
+  - `task.js`：タスク関連処理。
+  - `index.html`：GAS 側で利用する UI/表示用テンプレート。
+
+- `Flask_v1/`
+  - `app.py`：Flask アプリ本体。地図表示などの Web 側処理。
+
+> v1 は、LINE 連携〜保存〜表示までを一通りつなぐ、ベースとなる実装です。
+
+---
+
+### v2（機能分割・拡張を意識した構成）
+
+#### できること
+- 処理を責務ごとに分離し、保守しやすい形で運用する。
+- 支出データに対して地理情報取得を行う。
+- Google カレンダー連携など、周辺サービスへの展開を行う。
+- フォルダ作成など、運用自動化の補助処理を行う。
+
+#### ディレクトリ構造
+- `GooleAppsScript_v2/`
+  - `main.js`：エントリーポイントとなるメイン処理。
+  - `get_geodata.js`：住所・位置情報など地理データ取得処理。
+  - `to_calendar.js`：Google カレンダー連携処理。
+  - `make_folder.js`：Google Drive 等でのフォルダ生成補助処理。
+
+> v2 は、v1 の経験を踏まえ、機能を分割して拡張しやすくした設計です。
+
+---
+
+## 画像・デモ
+
+### LINE 連携イメージ
 ![LINE](images/line.png)
 
-This is the movie. This shows website of the map that shows where we spend money.
+### 地図可視化（デモ動画）
 [![Flaskでの実装](images/map.png)](https://www.youtube.com/watch?v=bNTV8DdcoJU)
+
+---
+
+## 運用の考え方（推奨）
+
+- 既存フローを安定運用する場合：`v1` を利用。
+- 新規機能追加・整理を進める場合：`v2` を利用。
+- 段階的移行を行う場合：v1 を稼働させつつ、同等機能を v2 に移して検証。
+
+必要に応じて、今後 README に「セットアップ手順」「環境変数」「デプロイ方法（GAS/Flask）」も追記していくと、初見の方でも導入しやすくなります。
