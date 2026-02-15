@@ -10,7 +10,7 @@ function registerCalendarEvent(title, dateStr, locationStr, descriptionStr) {
   try {
     Logger.log("Start registerCalendarEvent");
 
-    const calendarId = '438aa4de8b4355a98b91e74c0744c3b97c1b14c38a74d9093c89ef7cf7d4446f@group.calendar.google.com';
+    const calendarId = '@group.calendar.google.com';
     const calendar = CalendarApp.getCalendarById(calendarId);
 
     if (!calendar) {
